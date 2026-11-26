@@ -1,0 +1,43 @@
+name: item_rdc
+description: "Item RDC — cours, vidéos et bibliothèque universitaire."
+publish_to: 'none'
+
+version: 1.0.5+2007
+
+environment:
+  sdk: ^3.10.7
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  cupertino_icons: ^1.0.8
+  font_awesome_flutter: ^11.0.0
+  url_launcher: ^6.3.2
+  firebase_core: ^4.4.0
+  firebase_auth: ^6.1.4
+  cloud_firestore: ^6.1.2
+  firebase_messaging: ^16.1.0
+  shared_preferences: ^2.5.4
+  image_picker: ^1.2.1
+  pdfx: ^2.9.2
+  internet_file: ^1.3.0
+  video_player: ^2.10.1
+  intl: ^0.20.2
+  youtube_player_flutter: ^9.1.3
+  chewie: ^1.13.0
+  provider: ^6.1.2
+  webview_flutter: ^4.10.0
+  webview_windows: ^0.4.0
+  lottie: ^3.1.2
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^2.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/images/
+    - assets/lottie/
