@@ -2,6 +2,9 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:item_rdc/core/app_theme.dart';
 import 'package:item_rdc/core/catalog_store.dart';
+import 'package:item_rdc/core/publishing.dart';
+import 'package:item_rdc/pages/my_publications_page.dart';
+import 'package:item_rdc/pages/publish_page.dart';
 import 'package:item_rdc/core/sorting.dart';
 import 'package:item_rdc/core/view_mode.dart';
 import 'package:item_rdc/widgets/media_tile.dart';
@@ -76,6 +79,7 @@ class _LibraryTabState extends State<LibraryTab> {
                 hint: "Rechercher une catégorie…",
                 onChanged: (v) => setState(() => _query = v),
               ),
+              const _PublishCard(),
               SortBar(
                 value: _sort,
                 allowCount: false,
@@ -511,6 +515,99 @@ class _DocumentPageState extends State<DocumentPage> {
               ],
             );
           },
+        ),
+      ),
+    );
+  }
+}
+
+
+/// Carte « Publier un ouvrage » + accès à « Mes publications ».
+class _PublishCard extends StatelessWidget {
+  const _PublishCard();
+
+  @override
+  Widget build(BuildContext context) {
+    final accent = AppColors.accent(context);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 6),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(20),
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [accent, accent.withValues(alpha: 0.72)],
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.upload_file_rounded, color: Colors.white, size: 26),
+                const SizedBox(width: 10),
+                const Expanded(
+                  child: Text(
+                    "Publiez votre ouvrage",
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 17,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            const Text(
+              "TFC, Mémoire ou Stage : partagez-le avec les étudiants après validation.",
+              style: TextStyle(color: Colors.white, fontSize: 13),
+            ),
+            const SizedBox(height: 12),
+            StreamBuilder<bool>(
+              stream: Publishing.enabledStream(),
+              builder: (context, snap) {
+                final open = snap.data == true;
+                return Row(
+                  children: [
+                    Expanded(
+                      child: FilledButton.icon(
+                        onPressed: open
+                            ? () => Navigator.of(context).push(
+                                MaterialPageRoute(builder: (_) => const PublishPage()),
+                              )
+                            : null,
+                        icon: const Icon(Icons.add_rounded),
+                        label: Text(open ? "Publier" : "Bientôt"),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: Colors.white,
+                          foregroundColor: accent,
+                          disabledBackgroundColor: Colors.white54,
+                          disabledForegroundColor: accent.withValues(alpha: 0.6),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: () => Navigator.of(context).push(
+                          MaterialPageRoute(builder: (_) => const MyPublicationsPage()),
+                        ),
+                        icon: const Icon(Icons.inventory_2_outlined),
+                        label: const Text("Mes publications"),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.white,
+                          side: const BorderSide(color: Colors.white70),
+                        ),
+                      ),
+                    ),
+                  ],
+                );
+              },
+            ),
+          ],
         ),
       ),
     );

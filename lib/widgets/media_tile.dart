@@ -154,11 +154,27 @@ class MediaTile extends StatelessWidget {
 
   Widget _list(BuildContext context) {
     final theme = Theme.of(context);
+    final cu = coverUrlFor(cover, url);
     return ListTile(
       dense: true,
       onTap: onTap,
       contentPadding: const EdgeInsets.only(left: 22, right: 16),
-      leading: Icon(icon, color: AppColors.accent(context)),
+      leading: cu.isEmpty
+          ? Icon(icon, color: AppColors.accent(context))
+          : ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: SizedBox(
+                width: 40,
+                height: 40,
+                child: CoverImage(
+                  url: cu,
+                  width: 40,
+                  height: 40,
+                  cacheWidth: 120,
+                  fallback: Icon(icon, color: AppColors.accent(context)),
+                ),
+              ),
+            ),
       title: Text(
         title,
         maxLines: 2,
