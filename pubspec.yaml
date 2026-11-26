@@ -2,7 +2,7 @@ name: item_rdc
 description: "Item RDC — cours, vidéos et bibliothèque universitaire."
 publish_to: 'none'
 
-version: 1.0.5+2007
+version: 1.0.6+2008
 
 environment:
   sdk: ^3.10.7
