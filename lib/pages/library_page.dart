@@ -1,8 +1,10 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:item_rdc/core/app_theme.dart';
 import 'package:item_rdc/core/catalog_store.dart';
 import 'package:item_rdc/core/publishing.dart';
+import 'package:item_rdc/pages/dm_pages.dart';
 import 'package:item_rdc/pages/my_publications_page.dart';
 import 'package:item_rdc/pages/publish_page.dart';
 import 'package:item_rdc/core/sorting.dart';
@@ -543,6 +545,16 @@ class _DocumentPageState extends State<DocumentPage> {
                             date: Sorting.dateOf(it['createdAt']),
                             meta: label,
                             year: _str(it, 'academicYear'),
+                            onContact: _str(it, 'ownerUid').isEmpty ||
+                                    _str(it, 'ownerUid') ==
+                                        FirebaseAuth.instance.currentUser?.uid
+                                ? null
+                                : () => openDmWith(
+                                      context,
+                                      otherUid: _str(it, 'ownerUid'),
+                                      otherLabel: owner.isEmpty ? 'Auteur' : owner,
+                                      aboutTitle: _str(it, 'title'),
+                                    ),
                             icon: _iconFor(_str(it, 'url')),
                             onTap: open,
                           );

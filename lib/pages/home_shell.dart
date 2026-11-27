@@ -27,6 +27,9 @@ class HomeShell extends StatefulWidget {
 }
 
 class HomeShellState extends State<HomeShell> {
+  /// Instance affichée (permet aux écrans poussés de changer d'onglet).
+  static HomeShellState? current;
+
   static const _items = [
     NavItem(Icons.folder_copy_outlined, Icons.folder_copy_rounded, "Documents"),
     NavItem(Icons.play_circle_outline_rounded, Icons.play_circle_fill_rounded, "Vidéos"),
@@ -47,6 +50,7 @@ class HomeShellState extends State<HomeShell> {
     // Préchauffage : une fois l'accueil affiché, les autres onglets se
     // préparent en arrière-plan (un par un) => changement d'onglet instantané,
     // icônes déjà chargées.
+    current = this;
     WidgetsBinding.instance.addPostFrameCallback((_) => _warmUp());
   }
 
@@ -75,6 +79,7 @@ class HomeShellState extends State<HomeShell> {
 
   @override
   void dispose() {
+    if (identical(current, this)) current = null;
     super.dispose();
   }
 

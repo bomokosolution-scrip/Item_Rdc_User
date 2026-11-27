@@ -14,11 +14,11 @@ class SupabaseConfig {
 
   static const String url = String.fromEnvironment(
     'SUPABASE_URL',
-    defaultValue: 'https://eovmshzuovdagxvanpcl.supabase.co',
+    defaultValue: 'https://VOTRE-PROJET.supabase.co',
   );
   static const String anonKey = String.fromEnvironment(
     'SUPABASE_ANON_KEY',
-    defaultValue: 'sb_publishable_dbO4dWACu1H0Qd0_RJ5EoQ_tJTD0kjI',
+    defaultValue: 'VOTRE_CLE_ANON_PUBLIC',
   );
 
   /// Couvertures (images) et ouvrages (PDF).
@@ -92,10 +92,9 @@ class SupabaseStorage {
     return data.buffer.asUint8List();
   }
 
-  static Future<String> uploadCover(Uint8List raw) async {
+  static Future<String> _uploadPng(Uint8List png, String folder) async {
     _ensureConfigured();
-    final png = await prepareImage(raw, maxSide: 512);
-    final path = 'covers/${_name('png')}';
+    final path = '$folder/${_name('png')}';
     final client = HttpClient()..connectionTimeout = const Duration(seconds: 15);
     try {
       final req = await client.postUrl(
@@ -109,6 +108,19 @@ class SupabaseStorage {
     } finally {
       client.close(force: true);
     }
+  }
+
+  static Future<String> uploadCover(Uint8List raw) async {
+    final png = await prepareImage(raw, maxSide: 512);
+    return _uploadPng(png, 'covers');
+  }
+
+  /// Image de chat / d'entraide : réduite (1024 px, puis 720 px si trop lourde)
+  /// pour rester sous la limite de 2 Mo et économiser le stockage gratuit.
+  static Future<String> uploadChatImage(Uint8List raw) async {
+    var png = await prepareImage(raw, maxSide: 1024);
+    if (png.length > 1800 * 1024) png = await prepareImage(raw, maxSide: 720);
+    return _uploadPng(png, 'chat');
   }
 
   static const Map<String, String> _mime = {

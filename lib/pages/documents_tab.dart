@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:item_rdc/core/catalog.dart';
 import 'package:item_rdc/core/catalog_store.dart';
@@ -7,6 +8,7 @@ import 'package:item_rdc/core/sorting.dart';
 import 'package:item_rdc/widgets/media_tile.dart';
 import 'package:item_rdc/core/icon_cache.dart';
 import 'package:item_rdc/core/user_session.dart';
+import 'package:item_rdc/pages/dm_pages.dart';
 import 'package:item_rdc/pages/document_viewer_page.dart';
 import 'package:item_rdc/pages/home_shell.dart';
 import 'package:item_rdc/widgets/ui.dart';
@@ -57,6 +59,15 @@ class _DocumentsTabState extends State<DocumentsTab> {
             date: item.createdAt,
             meta: MediaUtils.kindLabel(item.url),
             year: item.year,
+            onContact: item.ownerUid.isEmpty ||
+                    item.ownerUid == FirebaseAuth.instance.currentUser?.uid
+                ? null
+                : () => openDmWith(
+                      context,
+                      otherUid: item.ownerUid,
+                      otherLabel: item.owner.isEmpty ? 'Auteur' : item.owner,
+                      aboutTitle: item.title,
+                    ),
             icon: fileIconFor(item.url),
             onTap: () => Navigator.of(context).push(
               MaterialPageRoute(

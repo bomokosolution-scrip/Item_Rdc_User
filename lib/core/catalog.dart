@@ -22,6 +22,7 @@ class FolderItem {
   final String owner;
   final String details;
   final String year;
+  final String ownerUid; // compte de l'auteur (pour « Contacter »)
   const FolderItem({
     required this.title,
     required this.url,
@@ -34,6 +35,7 @@ class FolderItem {
     this.owner = '',
     this.details = '',
     this.year = '',
+    this.ownerUid = '',
   });
 
   /// Nombre de fichiers (les sous-dossiers sont comptés par leur contenu).
@@ -68,6 +70,7 @@ class FolderItem {
             owner: (e['owner'] ?? '').toString(),
             details: (e['details'] ?? '').toString(),
             year: (e['academicYear'] ?? '').toString(),
+            ownerUid: (e['ownerUid'] ?? '').toString(),
             createdAt: Sorting.dateOf(e['createdAt']),
           ),
         );
@@ -226,6 +229,7 @@ class Catalog {
             owner: (data['owner'] ?? '').toString(),
             details: (data['details'] ?? '').toString(),
             year: (data['academicYear'] ?? '').toString(),
+            ownerUid: (data['ownerUid'] ?? '').toString(),
           ),
         );
       }

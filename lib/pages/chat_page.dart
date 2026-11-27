@@ -6,8 +6,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:item_rdc/core/app_theme.dart';
 import 'package:item_rdc/core/chat_service.dart';
+import 'package:item_rdc/pages/dm_pages.dart';
+import 'package:item_rdc/pages/help_pages.dart';
 
-/// Onglet « Discussion » : groupe général, ouvert à tous les comptes connectés.
+/// Onglet « Discussion » : groupe général, entraide et messages privés.
 class ChatPage extends StatelessWidget {
   const ChatPage({super.key});
 
@@ -15,46 +17,180 @@ class ChatPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) {
-      return const _Notice(
+      return const ChatNotice(
         icon: Icons.lock_rounded,
         title: "Connexion requise",
         message: "Connectez-vous pour participer à la discussion.",
       );
     }
-    return StreamBuilder<bool>(
-      stream: ChatService.generalEnabled(),
-      builder: (context, enabled) {
-        if (!enabled.hasData) {
+    return StreamBuilder<ChatFlags>(
+      stream: ChatService.flags(),
+      builder: (context, flags) {
+        if (!flags.hasData) {
           return const Center(child: CircularProgressIndicator());
         }
-        if (enabled.data != true) {
-          return const _Notice(
+        final f = flags.data!;
+        if (!f.any) {
+          return const ChatNotice(
             icon: Icons.forum_outlined,
             title: "Discussion fermée",
-            message: "L'administrateur ouvrira bientôt la discussion générale.",
+            message: "L'administrateur ouvrira bientôt la discussion.",
           );
         }
-        return StreamBuilder<String?>(
-          stream: ChatService.pseudoStream(uid),
-          builder: (context, pseudo) {
-            if (pseudo.connectionState == ConnectionState.waiting && !pseudo.hasData) {
-              return const Center(child: CircularProgressIndicator());
-            }
-            final p = pseudo.data;
-            if (p == null || p.isEmpty) return _PseudoSetup(uid: uid);
-            return _ChatRoom(uid: uid, pseudo: p);
-          },
+        return PseudoGate(
+          uid: uid,
+          builder: (context, pseudo) => _ChatHub(uid: uid, pseudo: pseudo, flags: f),
         );
       },
     );
   }
 }
 
-class _Notice extends StatelessWidget {
+/// Exige un pseudo (choix + règles) avant d'afficher [builder].
+class PseudoGate extends StatelessWidget {
+  final String uid;
+  final Widget Function(BuildContext context, String pseudo) builder;
+  const PseudoGate({super.key, required this.uid, required this.builder});
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<String?>(
+      stream: ChatService.pseudoStream(uid),
+      builder: (context, pseudo) {
+        if (pseudo.connectionState == ConnectionState.waiting && !pseudo.hasData) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        final p = pseudo.data;
+        if (p == null || p.isEmpty) return _PseudoSetup(uid: uid);
+        return builder(context, p);
+      },
+    );
+  }
+}
+
+/// Barre à trois volets : Groupe · Entraide · Privé (avec point de non-lu).
+class _ChatHub extends StatefulWidget {
+  final String uid;
+  final String pseudo;
+  final ChatFlags flags;
+  const _ChatHub({required this.uid, required this.pseudo, required this.flags});
+
+  @override
+  State<_ChatHub> createState() => _ChatHubState();
+}
+
+class _ChatHubState extends State<_ChatHub> {
+  late int _tab = widget.flags.general ? 0 : (widget.flags.help ? 1 : 2);
+  late final List<bool> _visited = [_tab == 0, _tab == 1, _tab == 2];
+  late final Stream<QuerySnapshot<Map<String, dynamic>>> _dms = ChatService.myDms(widget.uid);
+
+  bool _hasUnread(QuerySnapshot<Map<String, dynamic>>? s) {
+    if (s == null) return false;
+    for (final d in s.docs) {
+      final m = d.data();
+      if (m['lastSender'] == null || m['lastSender'] == widget.uid) continue;
+      final last = m['lastAt'];
+      if (last is! Timestamp) continue;
+      final read = (m['reads'] as Map?)?[widget.uid];
+      if (read is! Timestamp || read.compareTo(last) < 0) return true;
+    }
+    return false;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final f = widget.flags;
+    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+      stream: _dms,
+      builder: (context, dms) {
+        final unread = _hasUnread(dms.data);
+        return Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 8, 12, 6),
+              child: SizedBox(
+                width: double.infinity,
+                child: SegmentedButton<int>(
+                  showSelectedIcon: false,
+                  segments: [
+                    const ButtonSegment(
+                      value: 0,
+                      icon: Icon(Icons.groups_rounded),
+                      label: Text("Groupe"),
+                    ),
+                    const ButtonSegment(
+                      value: 1,
+                      icon: Icon(Icons.support_rounded),
+                      label: Text("Entraide"),
+                    ),
+                    ButtonSegment(
+                      value: 2,
+                      icon: Badge(
+                        isLabelVisible: unread,
+                        smallSize: 9,
+                        child: const Icon(Icons.mail_rounded),
+                      ),
+                      label: const Text("Privé"),
+                    ),
+                  ],
+                  selected: {_tab},
+                  onSelectionChanged: (v) => setState(() {
+                    _tab = v.first;
+                    _visited[_tab] = true;
+                  }),
+                ),
+              ),
+            ),
+            Expanded(
+              child: IndexedStack(
+                index: _tab,
+                sizing: StackFit.expand,
+                children: [
+                  if (!_visited[0])
+                    const SizedBox.shrink()
+                  else if (!f.general)
+                    const ChatNotice(
+                      icon: Icons.groups_rounded,
+                      title: "Groupe fermé",
+                      message: "Le groupe général est fermé pour le moment.",
+                    )
+                  else
+                    _ChatRoom(uid: widget.uid, pseudo: widget.pseudo),
+                  if (!_visited[1])
+                    const SizedBox.shrink()
+                  else if (!f.help)
+                    const ChatNotice(
+                      icon: Icons.support_rounded,
+                      title: "Entraide fermée",
+                      message: "L'espace d'entraide est fermé pour le moment.",
+                    )
+                  else
+                    HelpTab(uid: widget.uid, pseudo: widget.pseudo),
+                  if (!_visited[2])
+                    const SizedBox.shrink()
+                  else if (!f.dm)
+                    const ChatNotice(
+                      icon: Icons.mail_rounded,
+                      title: "Messages privés fermés",
+                      message: "Les messages privés sont fermés pour le moment.",
+                    )
+                  else
+                    DmListTab(uid: widget.uid, snapshot: dms),
+                ],
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class ChatNotice extends StatelessWidget {
   final IconData icon;
   final String title;
   final String message;
-  const _Notice({required this.icon, required this.title, required this.message});
+  const ChatNotice({required this.icon, required this.title, required this.message});
 
   @override
   Widget build(BuildContext context) {
@@ -420,7 +556,7 @@ class _ChatRoomState extends State<_ChatRoom> {
             stream: _latest,
             builder: (context, snap) {
               if (snap.hasError) {
-                return const _Notice(
+                return const ChatNotice(
                   icon: Icons.error_outline_rounded,
                   title: "Chargement impossible",
                   message: "Vérifiez votre connexion et réessayez.",
@@ -434,7 +570,7 @@ class _ChatRoomState extends State<_ChatRoom> {
               final all = [...live, ..._older.where((d) => !seen.contains(d.id))];
 
               if (all.isEmpty) {
-                return const _Notice(
+                return const ChatNotice(
                   icon: Icons.chat_bubble_outline_rounded,
                   title: "Aucun message",
                   message: "Soyez le premier à écrire dans la discussion !",

@@ -95,6 +95,9 @@ class MediaTile extends StatelessWidget {
   final IconData icon;
   final VoidCallback onTap;
 
+  /// Si fourni : bouton « Contacter l'auteur » (messages privés).
+  final VoidCallback? onContact;
+
   const MediaTile({
     super.key,
     required this.title,
@@ -107,6 +110,7 @@ class MediaTile extends StatelessWidget {
     this.meta = '',
     this.year = '',
     this.date,
+    this.onContact,
   });
 
   Widget _placeholder(BuildContext context, {double iconSize = 30}) {
@@ -142,6 +146,28 @@ class MediaTile extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _contactButton(BuildContext context) {
+    if (onContact == null) return const SizedBox.shrink();
+    final accent = AppColors.accent(context);
+    return Padding(
+      padding: const EdgeInsets.only(top: 4),
+      child: TextButton.icon(
+        onPressed: onContact,
+        icon: Icon(Icons.chat_bubble_outline_rounded, size: 16, color: accent),
+        label: Text(
+          "Contacter l'auteur",
+          style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: accent),
+        ),
+        style: TextButton.styleFrom(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+          minimumSize: Size.zero,
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          alignment: Alignment.centerLeft,
+        ),
       ),
     );
   }
@@ -258,6 +284,7 @@ class MediaTile extends StatelessWidget {
                         style: TextStyle(fontSize: 12, color: muted),
                       ),
                     ),
+                  _contactButton(context),
                   if (details.trim().isNotEmpty)
                     Padding(
                       padding: const EdgeInsets.only(top: 4),
@@ -344,6 +371,7 @@ class MediaTile extends StatelessWidget {
                         padding: const EdgeInsets.only(top: 3),
                         child: Text(_metaLine, style: TextStyle(fontSize: 12, color: muted)),
                       ),
+                    _contactButton(context),
                     if (details.trim().isNotEmpty)
                       Padding(
                         padding: const EdgeInsets.only(top: 6),
