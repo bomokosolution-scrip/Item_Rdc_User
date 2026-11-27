@@ -14,11 +14,11 @@ class SupabaseConfig {
 
   static const String url = String.fromEnvironment(
     'SUPABASE_URL',
-    defaultValue: 'https://VOTRE-PROJET.supabase.co',
+    defaultValue: 'https://eovmshzuovdagxvanpcl.supabase.co',
   );
   static const String anonKey = String.fromEnvironment(
     'SUPABASE_ANON_KEY',
-    defaultValue: 'VOTRE_CLE_ANON_PUBLIC',
+    defaultValue: 'sb_publishable_dbO4dWACu1H0Qd0_RJ5EoQ_tJTD0kjI',
   );
 
   /// Couvertures (images) et ouvrages (PDF).
