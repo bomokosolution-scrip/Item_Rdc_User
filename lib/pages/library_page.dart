@@ -340,6 +340,7 @@ class _DocumentPageState extends State<DocumentPage> {
   final _search = TextEditingController();
   String _query = '';
   String _filter = "All";
+  String _year = ''; // année académique (vide = toutes)
   SortMode _sort = SortMode.newest;
 
   @override
@@ -353,6 +354,7 @@ class _DocumentPageState extends State<DocumentPage> {
     if (MediaUtils.looksLikeVideoFile(url)) return Icons.video_library_rounded;
     if (MediaUtils.isDrive(url)) return Icons.cloud_rounded;
     if (MediaUtils.looksLikePdf(url)) return Icons.picture_as_pdf_rounded;
+    if (MediaUtils.looksLikeOffice(url)) return fileIconFor(url);
     return Icons.insert_drive_file_rounded;
   }
 
@@ -365,7 +367,10 @@ class _DocumentPageState extends State<DocumentPage> {
         MediaUtils.isYoutube(url) ||
         MediaUtils.looksLikeVideoFile(url) ||
         (MediaUtils.isDrive(url) && type.toLowerCase().contains('video'));
-    final isDoc = MediaUtils.looksLikePdf(url) || MediaUtils.isDrive(url);
+    final isDoc =
+        MediaUtils.looksLikePdf(url) ||
+        MediaUtils.looksLikeOffice(url) ||
+        MediaUtils.isDrive(url);
 
     if (isVideo) {
       Navigator.of(context).push(
@@ -404,8 +409,16 @@ class _DocumentPageState extends State<DocumentPage> {
               final type = normType(d['type']);
               final matchType = _filter == "All" || type == _filter;
               final matchQuery = q.isEmpty || _str(d, 'title').toLowerCase().contains(q);
-              return matchType && matchQuery;
+              final matchYear = _year.isEmpty || _str(d, 'academicYear') == _year;
+              return matchType && matchQuery && matchYear;
             }).toList();
+
+            // Années disponibles (les plus récentes d'abord).
+            final years = <String>{
+              for (final s in snapshot.data!.docs)
+                if (_str(s.data(), 'academicYear').isNotEmpty) _str(s.data(), 'academicYear'),
+            }.toList()
+              ..sort((a, b) => b.compareTo(a));
 
             if (_filter == "All") {
               final seen = <String>{};
@@ -458,6 +471,26 @@ class _DocumentPageState extends State<DocumentPage> {
                     ],
                   ),
                 ),
+                if (years.isNotEmpty)
+                  SizedBox(
+                    height: 44,
+                    child: ListView(
+                      scrollDirection: Axis.horizontal,
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                      children: [
+                        for (final y in ['', ...years])
+                          Padding(
+                            padding: const EdgeInsets.only(right: 8),
+                            child: ChoiceChip(
+                              label: Text(y.isEmpty ? "Toutes les années" : y),
+                              selected: _year == y,
+                              showCheckmark: false,
+                              onSelected: (_) => setState(() => _year = y),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
                 SortBar(
                   showViewMode: true,
                   value: _sort,
@@ -493,7 +526,11 @@ class _DocumentPageState extends State<DocumentPage> {
                             return _NavCard(
                               icon: _iconFor(_str(it, 'url')),
                               title: _str(it, 'title'),
-                              subtitle: owner.isEmpty ? label : "$label · $owner",
+                              subtitle: [
+                                label,
+                                if (_str(it, 'academicYear').isNotEmpty) _str(it, 'academicYear'),
+                                if (owner.isNotEmpty) owner,
+                              ].join(' · '),
                               onTap: open,
                             );
                           }
@@ -505,6 +542,7 @@ class _DocumentPageState extends State<DocumentPage> {
                             details: _str(it, 'details'),
                             date: Sorting.dateOf(it['createdAt']),
                             meta: label,
+                            year: _str(it, 'academicYear'),
                             icon: _iconFor(_str(it, 'url')),
                             onTap: open,
                           );

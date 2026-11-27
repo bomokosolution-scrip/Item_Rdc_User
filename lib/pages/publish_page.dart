@@ -7,9 +7,12 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:item_rdc/core/app_theme.dart';
+import 'package:item_rdc/core/catalog.dart';
+import 'package:item_rdc/core/user_session.dart';
 import 'package:item_rdc/core/catalog_store.dart';
 import 'package:item_rdc/core/publishing.dart';
 import 'package:item_rdc/core/supabase_storage.dart';
+import 'package:provider/provider.dart';
 
 /// Formulaire « Publier un ouvrage » (TFC, Mémoire, Stage).
 /// L'ouvrage reste « en attente » jusqu'à la validation de l'administrateur.
@@ -23,7 +26,13 @@ class PublishPage extends StatefulWidget {
 class _PublishPageState extends State<PublishPage> {
   static const List<String> _types = ['TFC', 'Mémoire', 'Stage'];
 
+  /// 'work' = ouvrage (TFC, Mémoire, Stage) ; 'document' = fichier rangé dans un dossier.
+  String _kind = 'work';
   String _type = 'TFC';
+  String? _year; // année académique
+  String? _folderId;
+  String _folderTitle = '';
+  String _subTitle = ''; // sous-dossier (vide = à la racine du dossier)
   String? _catId;
   String _catTitle = '';
   String? _uniId;
@@ -43,6 +52,12 @@ class _PublishPageState extends State<PublishPage> {
   bool _sending = false;
   double _progress = 0;
   String _stage = '';
+
+  /// Années académiques proposées : « 2026-2027 », « 2025-2026 », …
+  List<String> get _years {
+    final y = DateTime.now().year;
+    return [for (var i = 0; i < 12; i++) '${y - i}-${y - i + 1}'];
+  }
 
   @override
   void dispose() {
@@ -90,7 +105,7 @@ class _PublishPageState extends State<PublishPage> {
     try {
       final res = await FilePicker.platform.pickFiles(
         type: FileType.custom,
-        allowedExtensions: const ['pdf'],
+        allowedExtensions: SupabaseStorage.allowedExtensions,
       );
       final f = res?.files.single;
       if (f == null || f.path == null) return;
@@ -131,12 +146,15 @@ class _PublishPageState extends State<PublishPage> {
     if (_sending) return;
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) return _snack("Connectez-vous pour publier.");
-    if (_catId == null || _uniId == null) {
+    final isWork = _kind == 'work';
+    if (isWork && (_catId == null || _uniId == null)) {
       return _snack("Choisissez la catégorie et l'université.");
     }
+    if (isWork && _year == null) return _snack("Choisissez l'année académique.");
+    if (!isWork && _folderId == null) return _snack("Choisissez le dossier où ranger le document.");
     if (_title.text.trim().isEmpty) return _snack("Saisissez le titre de l'ouvrage.");
     if (_owner.text.trim().isEmpty) return _snack("Saisissez votre nom (propriétaire).");
-    if (_pdfPath == null) return _snack("Choisissez le fichier PDF.");
+    if (_pdfPath == null) return _snack("Choisissez le fichier à envoyer.");
 
     setState(() {
       _sending = true;
@@ -158,8 +176,8 @@ class _PublishPageState extends State<PublishPage> {
         coverUrl = await SupabaseStorage.uploadCover(_cover!);
       }
 
-      if (mounted) setState(() => _stage = 'Envoi du PDF…');
-      final fileUrl = await SupabaseStorage.uploadPdf(
+      if (mounted) setState(() => _stage = 'Envoi du fichier…');
+      final fileUrl = await SupabaseStorage.uploadDocument(
         File(_pdfPath!),
         folder: uid,
         onProgress: (p) {
@@ -168,15 +186,22 @@ class _PublishPageState extends State<PublishPage> {
       );
 
       if (mounted) setState(() => _stage = 'Finalisation…');
+      final premium = context.read<UserSession>().isPremium;
       await Publishing.collection.add({
         'uid': uid,
+        'kind': _kind,
         'ownerName': _owner.text.trim(),
         'title': _title.text.trim(),
-        'type': _type,
-        'categoryId': _catId,
-        'categoryTitle': _catTitle,
-        'universityId': _uniId,
-        'universityName': _uniName,
+        'type': isWork ? _type : 'Document',
+        'academicYear': _year ?? '',
+        'categoryId': isWork ? _catId : '',
+        'categoryTitle': isWork ? _catTitle : '',
+        'universityId': isWork ? _uniId : '',
+        'universityName': isWork ? _uniName : '',
+        'space': premium ? 'PREMIUM' : 'GENERAL',
+        'folderId': isWork ? '' : _folderId,
+        'folderTitle': isWork ? '' : _folderTitle,
+        'subFolderTitle': isWork ? '' : _subTitle,
         'details': _details.text.trim(),
         'fileUrl': fileUrl,
         'coverUrl': coverUrl,
@@ -248,7 +273,7 @@ class _PublishPageState extends State<PublishPage> {
     final theme = Theme.of(context);
 
     return Scaffold(
-      appBar: AppBar(title: const Text("Publier un ouvrage")),
+      appBar: AppBar(title: const Text("Publier")),
       body: StreamBuilder<bool>(
         stream: Publishing.enabledStream(),
         builder: (context, snap) {
@@ -287,6 +312,30 @@ class _PublishPageState extends State<PublishPage> {
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 40),
               children: [
                 _section(
+                  "Que voulez-vous publier ?",
+                  SizedBox(
+                    width: double.infinity,
+                    child: SegmentedButton<String>(
+                      showSelectedIcon: false,
+                      segments: const [
+                        ButtonSegment(
+                          value: 'work',
+                          icon: Icon(Icons.school_rounded),
+                          label: Text("Ouvrage"),
+                        ),
+                        ButtonSegment(
+                          value: 'document',
+                          icon: Icon(Icons.folder_copy_rounded),
+                          label: Text("Document"),
+                        ),
+                      ],
+                      selected: {_kind},
+                      onSelectionChanged: (v) => setState(() => _kind = v.first),
+                    ),
+                  ),
+                ),
+                if (_kind == 'work')
+                _section(
                   "Type d'ouvrage",
                   Wrap(
                     spacing: 10,
@@ -300,6 +349,7 @@ class _PublishPageState extends State<PublishPage> {
                     ],
                   ),
                 ),
+                if (_kind == 'work')
                 _section(
                   "Où publier ?",
                   Column(
@@ -375,6 +425,101 @@ class _PublishPageState extends State<PublishPage> {
                     ],
                   ),
                 ),
+                if (_kind == 'document')
+                  _section(
+                    "Où ranger le document ?",
+                    Builder(
+                      builder: (context) {
+                        final premium = context.watch<UserSession>().isPremium;
+                        final col = Catalog.homeCollection(premium);
+                        return StreamBuilder<CatalogSnapshot>(
+                          stream: CatalogStore.instance.watch(col, home: true),
+                          initialData: CatalogStore.instance.last(col),
+                          builder: (context, fs) {
+                            final folders = fs.data == null
+                                ? <ContentFolder>[]
+                                : (Catalog.fromSnapshot(fs.data!, treatAllAsFolders: true)
+                                      .folders
+                                      .toList()
+                                    ..sort(
+                                      (a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()),
+                                    ));
+                            ContentFolder? current;
+                            for (final f in folders) {
+                              if (f.id == _folderId) current = f;
+                            }
+                            final subs = current == null
+                                ? <FolderItem>[]
+                                : current.items.where((e) => e.isFolder).toList();
+                            return Column(
+                              children: [
+                                DropdownButtonFormField<String>(
+                                  // ignore: deprecated_member_use
+                                  value: current?.id,
+                                  isExpanded: true,
+                                  decoration: _dec("Dossier", Icons.folder_rounded),
+                                  items: [
+                                    for (final f in folders)
+                                      DropdownMenuItem(
+                                        value: f.id,
+                                        child: Text(f.title, overflow: TextOverflow.ellipsis),
+                                      ),
+                                  ],
+                                  onChanged: (id) {
+                                    if (id == null) return;
+                                    final f = folders.firstWhere((x) => x.id == id);
+                                    setState(() {
+                                      _folderId = id;
+                                      _folderTitle = f.title;
+                                      _subTitle = '';
+                                    });
+                                  },
+                                ),
+                                if (subs.isNotEmpty) ...[
+                                  const SizedBox(height: 12),
+                                  DropdownButtonFormField<String>(
+                                    key: ValueKey('sub_$_folderId'),
+                                    // ignore: deprecated_member_use
+                                    value: subs.any((e) => e.title == _subTitle) ? _subTitle : '',
+                                    isExpanded: true,
+                                    decoration: _dec("Sous-dossier", Icons.folder_open_rounded),
+                                    items: [
+                                      const DropdownMenuItem(
+                                        value: '',
+                                        child: Text("— À la racine du dossier —"),
+                                      ),
+                                      for (final e in subs)
+                                        DropdownMenuItem(
+                                          value: e.title,
+                                          child: Text(e.title, overflow: TextOverflow.ellipsis),
+                                        ),
+                                    ],
+                                    onChanged: (v) => setState(() => _subTitle = v ?? ''),
+                                  ),
+                                ],
+                              ],
+                            );
+                          },
+                        );
+                      },
+                    ),
+                  ),
+                _section(
+                  _kind == 'work' ? "Année académique" : "Année académique (facultatif)",
+                  DropdownButtonFormField<String>(
+                    key: ValueKey('year_$_kind'),
+                    // ignore: deprecated_member_use
+                    value: _year,
+                    isExpanded: true,
+                    decoration: _dec("Année", Icons.event_rounded),
+                    items: [
+                      if (_kind == 'document')
+                        const DropdownMenuItem(value: '', child: Text("— Aucune —")),
+                      for (final y in _years) DropdownMenuItem(value: y, child: Text(y)),
+                    ],
+                    onChanged: (v) => setState(() => _year = (v == null || v.isEmpty) ? null : v),
+                  ),
+                ),
                 _section(
                   "Informations",
                   Column(
@@ -382,7 +527,7 @@ class _PublishPageState extends State<PublishPage> {
                       TextField(
                         controller: _title,
                         textCapitalization: TextCapitalization.sentences,
-                        decoration: _dec("Titre de l'ouvrage", Icons.title_rounded),
+                        decoration: _dec(_kind == 'work' ? "Titre de l'ouvrage" : "Titre du document", Icons.title_rounded),
                       ),
                       const SizedBox(height: 12),
                       TextField(
@@ -401,13 +546,13 @@ class _PublishPageState extends State<PublishPage> {
                   ),
                 ),
                 _section(
-                  "Fichier PDF (25 Mo max)",
+                  "Fichier : PDF, Word, Excel ou PowerPoint (25 Mo max)",
                   OutlinedButton.icon(
                     onPressed: _pickPdf,
                     icon: const Icon(Icons.picture_as_pdf_rounded),
                     label: Text(
                       _pdfPath == null
-                          ? "Choisir le PDF"
+                          ? "Choisir le fichier"
                           : "$_pdfName · ${_size(_pdfSize)}",
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -449,7 +594,7 @@ class _PublishPageState extends State<PublishPage> {
                   Text(_stage, style: const TextStyle(fontWeight: FontWeight.w700)),
                   const SizedBox(height: 8),
                   LinearProgressIndicator(
-                    value: _stage == 'Envoi du PDF…' ? _progress : null,
+                    value: _stage == 'Envoi du fichier…' ? _progress : null,
                     minHeight: 6,
                     borderRadius: BorderRadius.circular(6),
                   ),

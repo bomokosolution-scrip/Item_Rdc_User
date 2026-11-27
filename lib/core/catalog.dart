@@ -21,6 +21,7 @@ class FolderItem {
   final String cover;
   final String owner;
   final String details;
+  final String year;
   const FolderItem({
     required this.title,
     required this.url,
@@ -32,6 +33,7 @@ class FolderItem {
     this.cover = '',
     this.owner = '',
     this.details = '',
+    this.year = '',
   });
 
   /// Nombre de fichiers (les sous-dossiers sont comptés par leur contenu).
@@ -65,6 +67,7 @@ class FolderItem {
             cover: (e['cover'] ?? '').toString(),
             owner: (e['owner'] ?? '').toString(),
             details: (e['details'] ?? '').toString(),
+            year: (e['academicYear'] ?? '').toString(),
             createdAt: Sorting.dateOf(e['createdAt']),
           ),
         );
@@ -222,6 +225,7 @@ class Catalog {
             cover: (data['cover'] ?? '').toString(),
             owner: (data['owner'] ?? '').toString(),
             details: (data['details'] ?? '').toString(),
+            year: (data['academicYear'] ?? '').toString(),
           ),
         );
       }

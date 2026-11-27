@@ -14,11 +14,11 @@ class SupabaseConfig {
 
   static const String url = String.fromEnvironment(
     'SUPABASE_URL',
-    defaultValue: 'https://eovmshzuovdagxvanpcl.supabase.co',
+    defaultValue: 'https://VOTRE-PROJET.supabase.co',
   );
   static const String anonKey = String.fromEnvironment(
     'SUPABASE_ANON_KEY',
-    defaultValue: 'sb_publishable_dbO4dWACu1H0Qd0_RJ5EoQ_tJTD0kjI',
+    defaultValue: 'VOTRE_CLE_ANON_PUBLIC',
   );
 
   /// Couvertures (images) et ouvrages (PDF).
@@ -111,24 +111,44 @@ class SupabaseStorage {
     }
   }
 
-  /// Envoie un PDF (flux, avec progression 0..1) et renvoie son URL.
-  static Future<String> uploadPdf(
+  static const Map<String, String> _mime = {
+    'pdf': 'application/pdf',
+    'doc': 'application/msword',
+    'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'xls': 'application/vnd.ms-excel',
+    'xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    'ppt': 'application/vnd.ms-powerpoint',
+    'pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+  };
+
+  /// Extensions acceptées pour les ouvrages et les documents.
+  static List<String> get allowedExtensions => _mime.keys.toList();
+
+  /// Envoie un fichier (PDF, Word, Excel, PowerPoint) en flux, avec
+  /// progression 0..1, et renvoie son URL publique.
+  static Future<String> uploadDocument(
     File file, {
     required String folder,
     void Function(double progress)? onProgress,
   }) async {
     _ensureConfigured();
+    final dot = file.path.lastIndexOf('.');
+    final ext = dot < 0 ? '' : file.path.substring(dot + 1).toLowerCase();
+    final mime = _mime[ext];
+    if (mime == null) {
+      throw const FormatException("Format non accepté (PDF, Word, Excel ou PowerPoint).");
+    }
     final len = await file.length();
     if (len > maxPdfBytes) {
-      throw const FormatException("Le PDF dépasse 25 Mo.");
+      throw const FormatException("Le fichier dépasse 25 Mo.");
     }
-    final path = '$folder/${_name('pdf')}';
+    final path = '$folder/${_name(ext)}';
     final client = HttpClient()..connectionTimeout = const Duration(seconds: 15);
     try {
       final req = await client.postUrl(
         Uri.parse('${SupabaseConfig.url}/storage/v1/object/${SupabaseConfig.pdfBucket}/$path'),
       );
-      _headers(req, 'application/pdf');
+      _headers(req, mime);
       req.contentLength = len;
       var sent = 0;
       await req.addStream(

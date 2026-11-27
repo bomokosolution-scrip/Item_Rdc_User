@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:item_rdc/core/app_theme.dart';
+import 'package:item_rdc/core/media_utils.dart';
 import 'package:item_rdc/core/view_mode.dart';
 import 'package:youtube_player_flutter/youtube_player_flutter.dart';
 
@@ -13,6 +14,20 @@ String coverUrlFor(String cover, String url) {
     if (id != null) return 'https://img.youtube.com/vi/$id/hqdefault.jpg';
   }
   return '';
+}
+
+/// Icône selon le type de fichier (PDF, Word, Excel, PowerPoint).
+IconData fileIconFor(String url) {
+  switch (MediaUtils.kindLabel(url)) {
+    case 'Word':
+      return Icons.description_rounded;
+    case 'Excel':
+      return Icons.table_chart_rounded;
+    case 'PowerPoint':
+      return Icons.slideshow_rounded;
+    default:
+      return Icons.picture_as_pdf_rounded;
+  }
 }
 
 String formatDate(DateTime? d) {
@@ -73,6 +88,9 @@ class MediaTile extends StatelessWidget {
 
   /// Petit libellé (type, « PDF », « Vidéo »…).
   final String meta;
+
+  /// Année académique (ex. 2024-2025), facultative.
+  final String year;
   final DateTime? date;
   final IconData icon;
   final VoidCallback onTap;
@@ -87,6 +105,7 @@ class MediaTile extends StatelessWidget {
     this.owner = '',
     this.details = '',
     this.meta = '',
+    this.year = '',
     this.date,
   });
 
@@ -130,6 +149,7 @@ class MediaTile extends StatelessWidget {
   String get _metaLine {
     final parts = <String>[
       if (meta.trim().isNotEmpty) meta.trim(),
+      if (year.trim().isNotEmpty) year.trim(),
       if (date != null) formatDate(date),
     ];
     return parts.join(' · ');

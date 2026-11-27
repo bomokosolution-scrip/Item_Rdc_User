@@ -76,6 +76,21 @@ class MyPublicationsPage extends StatelessWidget {
     );
   }
 
+  /// « TFC · 2025-2026 · Catégorie › Université » ou « Document · Dossier › Sous-dossier ».
+  String _where(Map<String, dynamic> d) {
+    final year = '${d['academicYear'] ?? ''}'.trim();
+    final head = [
+      '${d['type'] ?? ''}',
+      if (year.isNotEmpty) year,
+    ].join(' · ');
+    if ('${d['kind'] ?? 'work'}' == 'document') {
+      final sub = '${d['subFolderTitle'] ?? ''}'.trim();
+      final folder = '${d['folderTitle'] ?? ''}';
+      return '$head · $folder${sub.isEmpty ? '' : ' › $sub'}';
+    }
+    return '$head · ${d['categoryTitle'] ?? ''} › ${d['universityName'] ?? ''}';
+  }
+
   Widget _card(BuildContext context, Map<String, dynamic> d) {
     final theme = Theme.of(context);
     final status = '${d['status'] ?? 'pending'}';
@@ -144,7 +159,7 @@ class MyPublicationsPage extends StatelessWidget {
                   ),
                   const SizedBox(height: 3),
                   Text(
-                    '${d['type'] ?? ''} · ${d['categoryTitle'] ?? ''} › ${d['universityName'] ?? ''}',
+                    _where(d),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(fontSize: 12, color: theme.textTheme.bodyMedium?.color),

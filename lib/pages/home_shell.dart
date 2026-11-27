@@ -1,3 +1,4 @@
+import 'package:item_rdc/pages/chat_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:item_rdc/core/app_theme.dart';
@@ -31,13 +32,14 @@ class HomeShellState extends State<HomeShell> {
     NavItem(Icons.play_circle_outline_rounded, Icons.play_circle_fill_rounded, "Vidéos"),
     NavItem(Icons.local_library_outlined, Icons.local_library_rounded, "Bibliothèque"),
     NavItem(Icons.workspace_premium_outlined, Icons.workspace_premium_rounded, "Premium"),
+    NavItem(Icons.forum_outlined, Icons.forum_rounded, "Discussion"),
   ];
 
-  static const _titles = ["Documents", "Vidéos", "Bibliothèque", "Mon abonnement"];
+  static const _titles = ["Documents", "Vidéos", "Bibliothèque", "Mon abonnement", "Discussion"];
 
   int _index = 0;
   int _generation = 0;
-  final List<bool> _visited = [true, false, false, false];
+  final List<bool> _visited = [true, false, false, false, false];
 
   @override
   void initState() {
@@ -84,6 +86,8 @@ class HomeShellState extends State<HomeShell> {
         return const VideosTab();
       case 2:
         return const LibraryTab();
+      case 4:
+        return const ChatPage();
       default:
         return const PremiumTab();
     }
@@ -151,7 +155,7 @@ class HomeShellState extends State<HomeShell> {
         body: IndexedStack(
             index: _index,
             children: [
-              for (int i = 0; i < 4; i++)
+              for (int i = 0; i < 5; i++)
                 TickerMode(
                   enabled: i == _index,
                   child: _visited[i]

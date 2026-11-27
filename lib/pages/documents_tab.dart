@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:item_rdc/core/catalog.dart';
 import 'package:item_rdc/core/catalog_store.dart';
+import 'package:item_rdc/core/media_utils.dart';
 import 'package:item_rdc/core/sorting.dart';
 import 'package:item_rdc/widgets/media_tile.dart';
 import 'package:item_rdc/core/icon_cache.dart';
@@ -54,8 +55,9 @@ class _DocumentsTabState extends State<DocumentsTab> {
             owner: item.owner,
             details: item.details,
             date: item.createdAt,
-            meta: 'PDF',
-            icon: Icons.picture_as_pdf_rounded,
+            meta: MediaUtils.kindLabel(item.url),
+            year: item.year,
+            icon: fileIconFor(item.url),
             onTap: () => Navigator.of(context).push(
               MaterialPageRoute(
                 builder: (_) => DocumentViewerPage(url: item.url, title: item.title),

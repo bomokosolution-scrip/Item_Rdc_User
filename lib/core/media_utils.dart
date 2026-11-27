@@ -61,6 +61,35 @@ class MediaUtils {
     return path.endsWith('.pdf');
   }
 
+  static String _ext(String url) {
+    final path = (Uri.tryParse(clean(url))?.path ?? '').toLowerCase();
+    final i = path.lastIndexOf('.');
+    return i < 0 ? '' : path.substring(i + 1);
+  }
+
+  /// Word, Excel, PowerPoint : ouverts dans la visionneuse en ligne.
+  static bool looksLikeOffice(String url) =>
+      const {'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx'}.contains(_ext(url));
+
+  /// « PDF », « Word », « Excel », « PowerPoint » ou « Fichier ».
+  static String kindLabel(String url) {
+    switch (_ext(url)) {
+      case 'pdf':
+        return 'PDF';
+      case 'doc':
+      case 'docx':
+        return 'Word';
+      case 'xls':
+      case 'xlsx':
+        return 'Excel';
+      case 'ppt':
+      case 'pptx':
+        return 'PowerPoint';
+      default:
+        return looksLikeVideoFile(url) ? 'Vidéo' : 'PDF';
+    }
+  }
+
   static bool looksLikeVideoFile(String url) {
     final path = (Uri.tryParse(clean(url))?.path ?? '').toLowerCase();
     return path.endsWith('.mp4') ||
